@@ -41,10 +41,4 @@ const $store = useStore();
 const tasks = computed(() => {
   return $store.tasks || [];
 });
-
-const statusIcons = {
-  not_started: 'start',
-  in_progress: 'pending',
-  completed: 'check_circle'
-}
 </script>
