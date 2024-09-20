@@ -10,3 +10,5 @@ Building a Quasar web app with backend access and authentication.
 ## Next version
 - Load images from file server
 - Push changes via SSE
+- Environment variables
+- Clean up and modularize API
