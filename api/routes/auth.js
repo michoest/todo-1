@@ -3,15 +3,15 @@ const router = express.Router();
 const { generateToken } = require('../utils/jwtUtils');
 const bcrypt = require('bcrypt');
 const _ = require('lodash');
-const { populate } = require('../db/db');
+const { populate, getDbCollections } = require('../db/db');
 
 router.post('/login', async (req, res) => {
+    const { Users, Accounts, Tasks } = getDbCollections();
+
     const { email, password } = req.body;
-    const Users = req.db.getCollection('users');
     let user = Users.findOne({ email });
 
     if (user && await bcrypt.compare(password, user.passwordHash)) {
-        const Accounts = req.db.getCollection('accounts');
         const account = user.defaultAccount ? Accounts.findOne({ id: user.defaultAccount }) : null;
         const token = generateToken(user.id, account?.id);
 
@@ -19,7 +19,6 @@ router.post('/login', async (req, res) => {
         user = _.pick(user, ['id', 'email', 'name', 'accounts', 'defaultAccount']);
 
         if (account) {
-            const Tasks = req.db.getCollection('tasks');
             const tasks = Tasks.find({ accessAccounts: { '$contains': account.id } });
         
             return res.json({ user, account, token, tasks });
@@ -33,29 +32,27 @@ router.post('/login', async (req, res) => {
 });
 
 router.post('/login/account', async (req, res) => {
+    const { Users, Accounts, Tasks } = getDbCollections();
+
     if (req.user) {
         const { accountId, setAsDefaultAccount } = req.body;
 
         if (req.user.accounts.includes(accountId)) {
-            const Accounts = req.db.getCollection('accounts');
             const account = Accounts.findOne({ id: accountId });
 
             if (account) {
                 if (setAsDefaultAccount) {
                     req.user.defaultAccount = accountId;
 
-                    const Users = req.db.getCollection('users');
                     Users.update(req.user);
                 }
 
                 const token = generateToken(req.user.id, account.id);
                 
-                const Tasks = req.db.getCollection('tasks');
                 let tasks = Tasks.find({ accessAccounts: { '$contains': account.id } });
                 tasks = populate(Tasks, tasks, Accounts, 'accessAccounts', 'accessAccounts');
                 tasks = populate(Tasks, tasks, Accounts, 'owner', 'owner');
 
-                const Users = req.db.getCollection('users');
                 let user = req.user;
                 user = populate(Users, user, Accounts, 'accounts', 'accounts');
                 user = _.pick(user, ['id', 'email', 'name', 'accounts', 'defaultAccount']);
@@ -78,6 +75,27 @@ router.post('/login/account', async (req, res) => {
 router.post('/logout', (req, res) => {
     // JWT doesn't require server-side logout, but you can implement token invalidation if needed
     res.send('Logged out successfully');
+});
+
+router.get('/data', async (req, res, next) => {
+    const { Users, Accounts, Tasks } = getDbCollections();
+
+    if (req.user && req.account) {
+        let tasks = Tasks.find({ accessAccounts: { '$contains': req.account.id } });
+        tasks = populate(Tasks, tasks, Accounts, 'accessAccounts', 'accessAccounts');
+        tasks = populate(Tasks, tasks, Accounts, 'owner', 'owner');
+
+        let user = req.user;
+        user = populate(Users, user, Accounts, 'accounts', 'accounts');
+        user = _.pick(user, ['id', 'email', 'name', 'accounts', 'defaultAccount']);
+
+        let account = req.account;
+    
+        return res.json({ user, account, tasks });
+    }
+    else {
+        return res.status(404).json({ notification: { message: 'Invalid token!' } });
+    }
 });
 
 module.exports = router;

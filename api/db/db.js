@@ -1,12 +1,13 @@
-// ./db/db.js
 const loki = require('lokijs');
 const { v4: uuid } = require('uuid');
 const bcrypt = require('bcrypt');
 
+const dbPath = process.env.DB_PATH || './db/db.db';
+
 let db;
 
 async function initDatabase(callback) {
-    const dbFile = './db/db.db';
+    const dbFile = dbPath;
     db = new loki(dbFile, {
         autoload: true,
         autoloadCallback: databaseInitialized,
@@ -89,6 +90,16 @@ function getDb() {
     return db;
 }
 
+function getDbCollections() {
+    const collections = {
+        'Users': 'users',
+        'Accounts': 'accounts',
+        'Tasks': 'tasks'
+    }
+    
+    return Object.fromEntries(Object.entries(collections).map(([key, value]) => [key, db.getCollection(value)]));
+}
+
 function populate(sourceCollection, sourceDoc, targetCollection, foreignKey, asProperty) {
     if (Array.isArray(sourceDoc)) {
       return sourceDoc.map(doc => populate(sourceCollection, doc, targetCollection, foreignKey, asProperty));
@@ -112,4 +123,4 @@ function populate(sourceCollection, sourceDoc, targetCollection, foreignKey, asP
     return populatedDoc;
 }
 
-module.exports = { initDatabase, getDb, populate };
+module.exports = { initDatabase, getDb, getDbCollections, populate };

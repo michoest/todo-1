@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 
-const { initDatabase, getDb } = require('./db/db');
+const { initDatabase, getDb, getDbCollections } = require('./db/db');
 const { verifyToken } = require('./utils/jwtUtils');
 const authRouter = require('./routes/auth');
 const usersAccountsRouter = require('./routes/usersAccounts');
@@ -70,6 +70,14 @@ function startServer() {
     // Test routes
     app.get('/test', async (req, res, next) => {
         res.json({ account: req.account });
+    });
+
+    // Error handling with APIError
+    app.use(function (err, req, res, next) {
+        const statusCode = err.statusCode || 500;
+        console.error(err.message, err.stack);
+        
+        return res.status(statusCode).json({ success: false, notification: { message: err.message }, ...err.info });
     });
 
     // Start the server
