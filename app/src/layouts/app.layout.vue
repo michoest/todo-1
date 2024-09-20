@@ -22,21 +22,23 @@ defineOptions({ name: 'AppLayout' });
 
 import { ref, onBeforeMount, watch } from 'vue';
 import { useStore } from 'stores/store';
+import { useRouter } from 'vue-router';
+
 import LoadingPage from 'src/pages/loading.page.vue';
 
 const tab = ref('menu');
 const $store = useStore();
+const $router = useRouter();
+
 
 onBeforeMount(async () => {
-  if (!$store.tasks) {
-    await $store.fetch();
+  if ($store.persistent.token && !$store.user) {
+    if (!await $store.fetch()) {
+      $router.push('/login');
+    }
   }
   else {
     $store.global.status = 'ok';
   }
-});
-
-watch(() => $store.persistent.token, async () => {
-    await $store.fetch();
 });
 </script>

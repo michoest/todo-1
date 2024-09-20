@@ -17,38 +17,42 @@ export const useStore = defineStore("store", {
   getters: {},
   actions: {
     async fetch() {
-      // try {
-      //   if (this.persistent.token) {
-      //     this.global.status = "loading";
+      console.log('fetch');
+      try {
+        if (this.persistent.token) {
+          this.global.status = "loading";
 
-      //     const response = await $api.get("/data");
-      //     ({ tasks: this.tasks, user: this.user, account: this.account } = response.data);
-      //   }
+          const response = await $api.get("/auth/data");
+          ({ tasks: this.tasks, user: this.user, account: this.account } = response.data);
+        }
 
-      //   this.global.status = "ok";
-      // } catch (err) {
-      //   const message = err.response?.data?.notification?.message;
+        this.global.status = "ok";
 
-      //   if (message) {
-      //     switch (message) {
-      //       case "jwt malformed":
-      //       case "Not authenticated!":
-      //       case "jwt expired":
-      //         notify("Redirecting to login...");
-      //         this.logout();
-      //         this.router.push("/login");
-      //         this.global.status = "ok";
-      //         break;
-      //     }
-      //   } else {
-      //     console.error(err);
-      //     this.global.status = "error";
-      //     notify(`Error: ${err}`, { type: "negative" });
-      //   }
-      // }
+        return true;
+      } catch (err) {
+        const message = err.response?.data?.notification?.message;
+
+        if (message) {
+          switch (message) {
+            case "jwt malformed":
+            case "Not authenticated!":
+            case "jwt expired":
+              notify("Redirecting to login...");
+              this.logout();
+              this.global.status = "ok";
+
+              return false;
+          }
+        } else {
+          console.error(err);
+          this.global.status = "error";
+          notify(`Error: ${err}`, { type: "negative" });
+        }
+      }
       this.global.status = "ok";
     },
     async login({ email, password }) {
+      console.log('login');
       try {
         const response = await $api.post(`/auth/login`, { email, password });
 
@@ -65,7 +69,6 @@ export const useStore = defineStore("store", {
       } catch (err) {
         console.log(err);
         const message = err.response?.data?.notification?.message;
-        console.log(message);
 
         if (message) {
           switch (message) {
@@ -79,6 +82,7 @@ export const useStore = defineStore("store", {
       }
     },
     async loginToAccount(accountId, setAsDefaultAccount = false) {
+      console.log('loginToAccount');
       this.global.status = 'loading';
 
       try {
@@ -90,6 +94,7 @@ export const useStore = defineStore("store", {
           $api.defaults.headers.common["Authorization"] = `Bearer ${this.persistent.token}`;
 
           notify(`Logged in to ${this.account.description}!`);
+          this.global.status = 'ok';
 
           // Redirect to default tab
           return true;
@@ -137,7 +142,7 @@ export const useStore = defineStore("store", {
   },
   persist: {
     storage: sessionStorage,
-    paths: ["persistent"],
+    pick: ["persistent"],
     afterHydrate: (ctx) => {
       $api.defaults.baseURL = ctx.store.persistent.api;
 
